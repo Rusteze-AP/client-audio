@@ -20,7 +20,7 @@ const VolumeBar = ({ volume, onVolumeChange }: VolumeBarProps) => {
 
   return (
     <div className="flex items-center justify-start space-x-2">
-      <i className={`fas ${volume == 0 ? "fa-volume-xmark" : volume > 50 ? "fa-volume-high" : "fa-volume-low" } text-sm text-black cursor-pointer`} onClick={toggleMute}></i>
+      <i className={`fas ${volume == 0 ? "fa-volume-xmark" : volume > 50 ? "fa-volume-high" : "fa-volume-low" } text-sm text-black cursor-pointer min-w-6`} onClick={toggleMute}></i>
       <input
         type="range"
         min="0"

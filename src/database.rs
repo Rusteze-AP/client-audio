@@ -98,8 +98,6 @@ impl AudioDatabase {
             song.id = Uuid::new_v4().to_string();
         }
 
-        println!("key meta: {:?}", song.id.as_bytes());
-
         let serialized_song = bincode::serialize(&song).unwrap();
         match self.db.insert(song.id.as_bytes(), serialized_song) {
             Ok(_) => Ok(song.id.clone()),

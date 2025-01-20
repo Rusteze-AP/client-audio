@@ -1,4 +1,4 @@
-import { Component, forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import VolumeBar from "./VolumeBar";
 import PlayButtons from "./PlayButtons";
 import TimeBar from "./TimeBar";
@@ -24,7 +24,7 @@ const AudioPlayer = forwardRef((_props, ref) => {
   }));
 
   const togglePlay = () => {
-    if (!isStreaming && currentSongRef !== null) {
+    if (!isStreaming && currentSongRef.current !== null) {
       if (audioRef.current) {
         audioRef.current.play().catch((err) => {
           console.error("Error on .play()", err);

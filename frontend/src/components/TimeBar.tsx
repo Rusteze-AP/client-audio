@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { formatTime } from "../tools";
 
 interface TimeBarProps {
@@ -16,7 +15,7 @@ const TimeBar = ({ duration, currentTime, bufferedTime, onTimeChange }: TimeBarP
 
   return (
     <div className="flex justify-between items-center w-full space-x-2">
-      <p className="text-sm text-black">{formatTime(currentTime)}</p>
+      <p className="text-sm text-black min-w-8">{formatTime(currentTime)}</p>
       <input
         type="range"
         min="0"
@@ -35,7 +34,7 @@ const TimeBar = ({ duration, currentTime, bufferedTime, onTimeChange }: TimeBarP
           `,
         }}
       />
-      <p className="text-sm text-black">{formatTime(duration)}</p>
+      <p className="text-sm text-black min-w-8">{formatTime(duration)}</p>
     </div>
   );
 };
