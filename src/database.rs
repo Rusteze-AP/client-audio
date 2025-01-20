@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Clone)] 
 pub struct SongMetaData {
-    id: u128,
+    id: String,
     title: String,
     artist: String,
     album: String,
@@ -93,22 +93,24 @@ impl AudioDatabase {
 
     /// Insert the song metadata into the database and return the song ID
     /// If the id of the passed song is 0, a new id is generated
-    pub fn insert_song_meta(&self, mut song: SongMetaData) -> Result<u128, String> {
-        if song.id == 0 {
-            song.id = Uuid::new_v4().as_u128();
+    pub fn insert_song_meta(&self, mut song: SongMetaData) -> Result<String, String> {
+        if song.id == "0" {
+            song.id = Uuid::new_v4().to_string();
         }
 
+        println!("key meta: {:?}", song.id.as_bytes());
+
         let serialized_song = bincode::serialize(&song).unwrap();
-        match self.db.insert(song.id.to_be_bytes(), serialized_song) {
-            Ok(_) => Ok(song.id),
+        match self.db.insert(song.id.as_bytes(), serialized_song) {
+            Ok(_) => Ok(song.id.clone()),
             Err(e) => Err(format!("Error inserting song: {}", e)),
         }
     }
 
-    pub fn insert_song_payload(&self, id: u128, payload: Vec<u8>) -> Result<(), String> {
+    pub fn insert_song_payload(&self, id: String, payload: Vec<u8>) -> Result<(), String> {
         let mut key: Vec<u8> = Vec::new();
         key.push(1);
-        key.extend_from_slice(&id.to_be_bytes());
+        key.extend_from_slice(id.as_bytes());
         match self.db.insert(key, payload) {
             Ok(_) => Ok(()),
             Err(e) => Err(format!("Error inserting song payload: {}", e)),
@@ -117,8 +119,8 @@ impl AudioDatabase {
 
     /// Get the song metadata from the database
     /// If the song is stored locally, the payload is also returned
-    pub fn get_song_meta(&self, id: u128) -> Result<SongMetaData, String> {
-        match self.db.get(id.to_be_bytes()) {
+    pub fn get_song_meta(&self, id: String) -> Result<SongMetaData, String> {
+        match self.db.get(id.as_bytes()) {
             Ok(Some(data)) => {
                 let song: SongMetaData = bincode::deserialize(&data).unwrap();
                 Ok(song)
@@ -129,10 +131,10 @@ impl AudioDatabase {
     }
 
     /// Get the song payload from the database
-    pub fn get_song_payload(&self, id: u128) -> Result<Vec<u8>, String> {
+    pub fn get_song_payload(&self, id: String) -> Result<Vec<u8>, String> {
         let mut key: Vec<u8> = Vec::new();
         key.push(1);
-        key.extend_from_slice(&id.to_be_bytes());
+        key.extend_from_slice(id.as_bytes());
         match self.db.get(key) {
             Ok(Some(data)) => Ok(data.to_vec()),
             Ok(None) => Err("Song payload not found".to_string()),
@@ -147,7 +149,7 @@ impl AudioDatabase {
         for record in self.db.iter() {
             match record {
                 Ok((key, data)) => {
-                    if key.len() == 16 {
+                    if *key.get(0).unwrap() != 1 {
                         match bincode::deserialize(&data) {
                             Ok(song) => songs.push(song),
                             Err(e) => return Err(format!("Error deserializing song: {}", e)),

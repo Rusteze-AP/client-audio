@@ -2,4 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html {
+  overflow-y: auto;
+}
+
+.progress-bar {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px; 
+  background: linear-gradient(to right, black 50%, gray 50%);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.3s ease; 
+}
+
+.progress-bar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px; 
+  background: black; 
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s ease; 
+}
+
+.progress-bar:hover::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+.progress-bar::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: black;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.progress-bar:hover::-moz-range-thumb {
+  opacity: 1;
+}
 

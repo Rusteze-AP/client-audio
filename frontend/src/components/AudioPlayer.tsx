@@ -1,5 +1,4 @@
 import { useRef, useState, useEffect } from "react";
-import AudioFileList from "./AudioFileList";
 
 function AudioPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -9,6 +8,7 @@ function AudioPlayer() {
   const [isStreaming, setIsStreaming] = useState(false);
 
   const logCurrentTime = () => {
+    startStream(1);
     if (audioRef.current) {
       // console.log(`current time: ${audioRef.current.currentTime}`);
     }
@@ -129,7 +129,7 @@ function AudioPlayer() {
   return (
     <div style={{ padding: "1rem" }}>
       <audio ref={audioRef} controls />
-      <AudioFileList callback={startStream} />
+      {/* <AudioFileList callback={startStream} /> */}
     </div>
   );
 }

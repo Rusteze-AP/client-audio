@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { formatTime } from "../tools";
 
 type AudioFileListProps = {
-  callback: (file: number) => void;
+  callback: (song: Song) => void;
 };
 
-interface Song {
-  id: number;
+export interface Song {
+  id: string;
   title: string;
   artist: string;
   album: string;
@@ -34,22 +35,21 @@ const AudioFileList: React.FC<AudioFileListProps> = ({ callback }) => {
   }, []);
 
   return (
-    <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 text-left">
-      {songs.map((song, _) => (
-        <div onClick={() => callback(song.id)} className="group relative overflow-hidden rounded-2xl">
+    <div className="grid grid-cols-3 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 p-4">
+      {songs.map((song) => (
+        <div key={song.id} onClick={() => callback(song)} className="group relative w-full aspect-square overflow-hidden rounded-2xl bg-gray-800">
           <img
             src={song.image_url}
             alt={song.title}
-            className="w-[25vw] h-auto object-cover transition-transform duration-300 ease-in-out transform group-hover:scale-110 "
+            className="object-cover w-full h-full transition-transform duration-300 ease-in-out transform group-hover:scale-110"
           />
           <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-between p-4">
             <div className="flex justify-end">
-              <span className="text-white text-lg font-semibold px-2 py-1 rounded-md">{formatDuration(song.duration)}</span>
+              <span className="text-white text-lg font-semibold px-2 py-1 rounded-md select-none">{formatTime(song.duration)}</span>
             </div>
-
-            <div className="text-white">
-              <h3 className="text-3xl font-bold">{song.title}</h3>
-              <p className="text-lg text-gray-300">
+            <div className="text-white select-none">
+              <h3 className="text-xl font-bold">{song.title}</h3>
+              <p className="text-sm text-gray-300">
                 {song.album} • {song.artist}
               </p>
             </div>
@@ -58,12 +58,6 @@ const AudioFileList: React.FC<AudioFileListProps> = ({ callback }) => {
       ))}
     </div>
   );
-};
-
-const formatDuration = (duration: number) => {
-  const minutes = Math.floor(duration / 60);
-  const seconds = duration % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
 
 export default AudioFileList;
