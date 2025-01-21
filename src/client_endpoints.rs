@@ -1,46 +1,48 @@
-use std::{
-    sync::{Arc, RwLock},
-    thread::sleep,
-};
-
-use base64::{engine::general_purpose, Engine};
-use rocket::{
-    response::stream::{Event, EventStream},
-    serde::json::Json,
-    State,
-};
-use std::time::Duration;
+use rocket::response::status::NotFound;
+use rocket::serde::json::Json;
+use rocket::State;
+use std::sync::{Arc, RwLock};
 
 use crate::{database::SongMetaData, ClientState};
 
+#[get("/audio/<id>/<segment>")]
+pub async fn get_song(
+    state: &State<Arc<RwLock<ClientState>>>,
+    id: String,
+    segment: String,
+) -> Result<Vec<u8>, NotFound<String>> {
+    if segment.ends_with(".m3u8") {
+        let playlist = state.read().unwrap().db.get_song_playlist(id.clone());
 
-#[get("/audio/<id>")]
-pub fn stream_audio(state: &State<Arc<RwLock<ClientState>>>, id: String) -> EventStream![] {
-    let payload = match state
-        .read()
-        .unwrap()
-        .db
-        .get_song_payload(id)
-    {
-        Ok(p) => p,
-        Err(e) => {
-            state
-                .read()
-                .unwrap()
-                .logger
-                .log_error(&format!("Error: {}", e));
-            Vec::new()
+        match playlist {
+            Ok(playlist) => Ok(playlist),
+            Err(e) => {
+                state
+                    .read()
+                    .unwrap()
+                    .logger
+                    .log_error(&format!("Error get_song playlist: {}", e));
+                Err(NotFound(format!("Error get_song playlist: {}", e)))
+            }
         }
-    };
-    let buffer_size = 1024;
-    EventStream! {
-        for chunk in payload.chunks(buffer_size) {
-            let base64_data = general_purpose::STANDARD.encode(chunk).trim().to_string();
-
-            yield Event::data(base64_data);
-            sleep(Duration::from_millis(15));
+    } else {
+        let segment_id = segment.trim_end_matches(".ts");
+        let segment_payload = state
+            .read()
+            .unwrap()
+            .db
+            .get_song_segment(id.clone(), segment_id.to_string());
+        match segment_payload {
+            Ok(s) => Ok(s),
+            Err(e) => {
+                state
+                    .read()
+                    .unwrap()
+                    .logger
+                    .log_error(&format!("Error get_song segment: {}", e));
+                Err(NotFound(format!("Error get_song segment: {}", e)))
+            }
         }
-        yield Event::data(general_purpose::STANDARD.encode("EOF").trim().to_string());
     }
 }
 
@@ -48,9 +50,7 @@ pub fn stream_audio(state: &State<Arc<RwLock<ClientState>>>, id: String) -> Even
 pub async fn audio_files(state: &State<Arc<RwLock<ClientState>>>) -> Json<Vec<SongMetaData>> {
     let res = state.read().unwrap().db.get_all_songs_meta();
     match res {
-        Ok(songs) => {
-            Json(songs)
-            },
+        Ok(songs) => Json(songs),
         Err(e) => {
             state
                 .read()

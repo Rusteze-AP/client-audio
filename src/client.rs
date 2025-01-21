@@ -11,7 +11,7 @@ use wg_internal::controller::{DroneCommand, DroneEvent};
 use wg_internal::network::NodeId;
 use wg_internal::packet::Packet;
 
-use crate::client_endpoints::{audio_files, stream_audio};
+use crate::client_endpoints::{audio_files, get_song};
 use crate::database::AudioDatabase;
 
 pub struct ClientState {
@@ -114,7 +114,7 @@ impl Client {
     fn configure(client: Client) -> Rocket<Build> {
         rocket::build()
             .manage(client.state.clone())
-            .mount("/", routes![audio_files, stream_audio])
+            .mount("/", routes![audio_files, get_song])
             .mount("/", rocket::fs::FileServer::from(relative!("static")))
     }
 
