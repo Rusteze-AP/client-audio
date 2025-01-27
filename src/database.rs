@@ -1,18 +1,6 @@
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use std::fs;
+use packet_forge::{Metadata, SongMetaData};
 use sled;
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SongMetaData {
-    id: String,
-    title: String,
-    artist: String,
-    album: String,
-    duration: u8,
-    image_url: String,
-    is_local: bool,
-}
+use std::fs;
 
 pub struct AudioDatabase {
     db: sled::Db,
@@ -97,13 +85,10 @@ impl AudioDatabase {
                     })?;
 
                     if path.extension().and_then(|ext| ext.to_str()) == Some("m3u8") {
-                        println!("playlist: {}", path.display());
-                        self.insert_song_playlist(song_id.clone(), entry_content)?;
+                        self.insert_song_segment(song_id.clone(), 0,entry_content)?;
                     } else if path.extension().and_then(|ext| ext.to_str()) == Some("ts") {
-                        let segment = path.file_stem().unwrap().to_string_lossy().to_string();
-                        println!("segment: {}", path.display());
-                        println!("segment: {}", segment);
-                        self.insert_song_segment(song_id.clone(), segment, entry_content)?;
+                        let segment = path.file_stem().unwrap().to_string_lossy().to_string().replace("segment", "").parse::<u16>().unwrap();
+                        self.insert_song_segment(song_id.clone(), segment+1, entry_content)?;
                     } else {
                         return Err("Error: Invalid file extension".to_string());
                     }
@@ -115,38 +100,27 @@ impl AudioDatabase {
 
     /// Insert the song metadata into the database and return the song ID
     /// If the id of the passed song is 0, a new id is generated
-    pub fn insert_song_meta(&self, mut song: SongMetaData) -> Result<String, String> {
-        if song.id == "0" {
-            song.id = Uuid::new_v4().to_string();
+    pub fn insert_song_meta(&self, mut song: SongMetaData) -> Result<u16, String> {
+        if song.id == 0 {
+            song.id = song.compact_hash_u16();
         }
 
         let serialized_song = bincode::serialize(&song).unwrap();
-        match self.db.insert(song.id.as_bytes(), serialized_song) {
-            Ok(_) => Ok(song.id.clone()),
+        match self.db.insert(song.id.to_be_bytes(), serialized_song) {
+            Ok(_) => Ok(song.id),
             Err(e) => Err(format!("Error inserting song: {}", e)),
-        }
-    }
-
-    pub fn insert_song_playlist(&self, id: String, payload: Vec<u8>) -> Result<(), String> {
-        let mut key: Vec<u8> = Vec::new();
-        key.push(0);
-        key.extend_from_slice(id.as_bytes());
-        match self.db.insert(key, payload) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!("Error inserting song payload: {}", e)),
         }
     }
 
     pub fn insert_song_segment(
         &self,
-        id: String,
-        segment: String,
+        id: u16,
+        segment: u16,
         payload: Vec<u8>,
     ) -> Result<(), String> {
         let mut key: Vec<u8> = Vec::new();
-        key.push(0);
-        key.extend_from_slice(segment.as_bytes());
-        key.extend_from_slice(id.as_bytes());
+        key.extend_from_slice(&segment.to_be_bytes());
+        key.extend_from_slice(&id.to_be_bytes());
         match self.db.insert(key, payload) {
             Ok(_) => Ok(()),
             Err(e) => Err(format!("Error inserting song payload: {}", e)),
@@ -155,8 +129,8 @@ impl AudioDatabase {
 
     /// Get the song metadata from the database
     /// If the song is stored locally, the payload is also returned
-    pub fn get_song_meta(&self, id: String) -> Result<SongMetaData, String> {
-        match self.db.get(id.as_bytes()) {
+    pub fn get_song_meta(&self, id: u16) -> Result<SongMetaData, String> {
+        match self.db.get(id.to_be_bytes()) {
             Ok(Some(data)) => {
                 let song: SongMetaData = bincode::deserialize(&data).unwrap();
                 Ok(song)
@@ -166,23 +140,10 @@ impl AudioDatabase {
         }
     }
 
-    /// Get the song payload from the database
-    pub fn get_song_playlist(&self, id: String) -> Result<Vec<u8>, String> {
+    pub fn get_song_segment(&self, id: u16, segment: u16) -> Result<Vec<u8>, String> {
         let mut key: Vec<u8> = Vec::new();
-        key.push(0);
-        key.extend_from_slice(id.as_bytes());
-        match self.db.get(key) {
-            Ok(Some(data)) => Ok(data.to_vec()),
-            Ok(None) => Err("Song payload not found".to_string()),
-            Err(e) => Err(format!("Error getting song payload: {}", e)),
-        }
-    }
-
-    pub fn get_song_segment(&self, id: String, segment: String) -> Result<Vec<u8>, String> {
-        let mut key: Vec<u8> = Vec::new();
-        key.push(0);
-        key.extend_from_slice(segment.as_bytes());
-        key.extend_from_slice(id.as_bytes());
+        key.extend_from_slice(&segment.to_be_bytes());
+        key.extend_from_slice(&id.to_be_bytes());
         match self.db.get(key) {
             Ok(Some(data)) => Ok(data.to_vec()),
             Ok(None) => Err("Song payload not found".to_string()),
