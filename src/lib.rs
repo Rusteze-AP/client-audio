@@ -5,5 +5,4 @@ mod client;
 mod client_endpoints;
 mod database;
 
-
 pub use client::*;
