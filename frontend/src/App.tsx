@@ -8,20 +8,34 @@ function App() {
   const [isClientReady, setIsClientReady] = useState(false);
 
   useEffect(() => {
+    let interval: any| null = null;
+
     const checkClientReady = async () => {
       try {
         const response = await fetch("/is-ready");
         const data = await response.json();
-        setIsClientReady(data.ready);
+
+        if (data) {
+          setIsClientReady(true);
+
+          
+          if (interval) {
+            clearInterval(interval);
+          }
+        }
       } catch (error) {
         console.error("Error checking client readiness:", error);
       }
     };
 
     checkClientReady();
-    const interval = setInterval(checkClientReady, 1000);
+    interval = setInterval(checkClientReady, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, []);
 
   if (!isClientReady) {

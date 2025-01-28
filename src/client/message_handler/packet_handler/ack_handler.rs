@@ -9,16 +9,13 @@ impl Client {
         session_id: u64,
         fragment_index: u64,
     ) {
-        let Some(entry) = state.packets_history.remove(&(fragment_index, session_id)) else {
+        let Some(_) = state.packets_history.remove(&(fragment_index, session_id)) else {
             state.logger.log_error(&format!(
                 "Failed to remove [ ({}, {}) ] key from packet history",
                 fragment_index, session_id
             ));
             return;
         };
-        state
-            .logger
-            .log_info(&format!("Packet history updated, removed: {:?}", entry));
     }
 
     // Builds and sends an `Ack` to the `next_hop`. If it fails it tries to use the Simulation Controller
@@ -27,7 +24,8 @@ impl Client {
         packet: &Packet,
         fragment_index: u64,
     ) {
-        let source_routing_header = packet.routing_header.get_reversed();
+        let mut source_routing_header = packet.routing_header.get_reversed();
+        source_routing_header.increase_hop_index();
         if source_routing_header.hop_index != 1 {
             state.logger.log_error(&format!(
                 "Unable to reverse source routing header. \n Hops: {} \n Hop index: {}",

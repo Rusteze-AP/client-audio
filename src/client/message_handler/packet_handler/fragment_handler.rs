@@ -78,6 +78,9 @@ impl Client {
                 chunk.file_hash;
             }
             MessageType::ResponseFileList(list) => {
+                state.logger.log_info("Received file list");
+                state.logger.log_info(&format!("list {:?}",list));
+
                 for song in list.file_list {
                     match song {
                         FileMetadata::Song(song) => {
@@ -98,6 +101,7 @@ impl Client {
                         }
                     }
                 }
+                
                 state.status = Status::Running;
             }
             _ => {

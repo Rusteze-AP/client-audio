@@ -37,7 +37,7 @@ impl Client {
         state: &mut RwLockWriteGuard<ClientState>,
         message: &FloodRequest,
     ) {
-        let (dest, packet) = Self::build_flood_response(message);
+        let (dest, packet) = Self::build_flood_response(state.id,message);
 
         let res = Self::send_flood_response(state, dest, &packet);
 
@@ -93,9 +93,9 @@ impl Client {
         state.flood_id
     }
 
-    pub(crate) fn build_flood_response(flood_req: &FloodRequest) -> (NodeId, Packet) {
+    pub(crate) fn build_flood_response(node_id: NodeId, flood_req: &FloodRequest) -> (NodeId, Packet) {
         let mut flood_req = flood_req.clone();
-        flood_req.path_trace.push((flood_req.initiator_id, NodeType::Client));
+        flood_req.path_trace.push((node_id, NodeType::Client));
         let mut packet = flood_req.generate_response(1); // Note: returns with hop_index = 0;
         packet.routing_header.increase_hop_index();
         let dest = packet.routing_header.current_hop();

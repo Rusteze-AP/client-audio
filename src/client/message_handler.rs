@@ -2,7 +2,8 @@ mod command_handler;
 mod packet_handler;
 use super::{Client, Status};
 use crossbeam_channel::TryRecvError;
-use std::thread;
+use tokio::time::sleep;
+use std::{process::exit, thread};
 
 impl Client {
     #[must_use]
@@ -15,10 +16,11 @@ impl Client {
             let mut state = self.state.write().unwrap();
             
 
-            if !state.servers_id.is_empty() {
+            if !state.servers_id.is_empty() && state.status == Status::Idle {
                 state.logger.log_info("Server detected, intialize server connection");
                 Self::send_subscribe(&mut state);
                 Self::send_request_filelist(&mut state);
+                state.status = Status::Running;
             }
 
             if state.status == Status::Terminated {

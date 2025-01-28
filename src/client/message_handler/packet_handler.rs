@@ -28,18 +28,19 @@ impl Client {
             }
         }
 
-        state
-            .logger
-            .log_info(format!("Received packet {}", packet.session_id).as_str());
-
         match &packet.pack_type {
             PacketType::MsgFragment(fragment) => {
                 Self::fragment_handler(state, fragment, &packet);
             }
             PacketType::FloodResponse(flood_res) => {
+                state.logger.log_info(&format!(
+                    "Received flood response with flood id: {}",
+                    flood_res.flood_id
+                ));
                 state.routing_handler.update_graph(flood_res.clone());
                 for (id, node_type) in &flood_res.path_trace {
                     if *node_type == NodeType::Server && !state.servers_id.contains(id) {
+                        state.logger.log_info(&format!("Adding server id: {}", id));
                         state.servers_id.push(*id);
                     }
                 }
@@ -81,6 +82,9 @@ impl Client {
                     next_hop, packet, err
                 ));
             }
+            state
+                .packets_history
+                .insert((packet.get_fragment_index(), packet.session_id), packet.clone());
             Self::event_dispatcher(state, packet, &packet_str);
         }
         Ok(())
@@ -100,8 +104,6 @@ impl Client {
         node_id: NodeId,
         senders: &HashMap<NodeId, Sender<Packet>>,
     ) -> Result<Sender<Packet>, String> {
-        println!("Get sender Node ID: {}", node_id);
-        println!("Get sender senders: {:?}", senders);
         if let Some(sender) = senders.get(&node_id) {
             return Ok(sender.clone());
         }

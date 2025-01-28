@@ -103,7 +103,9 @@ pub async fn audio_files(client: &State<Client>) -> Json<Vec<SongMetaData>> {
 #[get("/is-ready")]
 pub async fn is_ready(client: &State<Client>) -> Json<bool> {
     let state = client.state.clone();
+    println!("is_ready???? {:?}",state.read().unwrap().status);
     let res = state.read().unwrap().status == crate::Status::Running;
+    print!("is_ready???? {:?}",res);
     Json(res)
 }
 

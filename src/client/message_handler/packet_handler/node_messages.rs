@@ -73,6 +73,15 @@ impl Client {
         src: NodeId,
         dst: NodeId,
     ) {
+        let message_type = match message {
+            MessageType::SubscribeClient(_) => "SubscribeClient",
+            MessageType::UnsubscribeClient(_) => "UnsubscribeClient",
+            MessageType::RequestFileList(_) => "RequestFileList",
+            MessageType::ResponseFileList(_) => "ResponseFileList",
+            MessageType::ChunkRequest(_) => "ChunkRequest",
+            MessageType::ChunkResponse(_) => "ChunkResponse",
+            _ => "Unknown",
+        };
         //Comopute the best path
         let srh = match state.routing_handler.best_path(src, dst) {
             Some(srh) => srh,
@@ -94,13 +103,14 @@ impl Client {
             }
         };
 
-        if let Err(e) = Self::send_packets_vec(state, &frames, srh.next_hop().unwrap()) {
+        if let Err(e) = Self::send_packets_vec(state, &frames, srh.current_hop().unwrap()) {
             state.logger.log_error(&e);
             return;
         }
 
         state
             .logger
-            .log_info(&format!("Successfully sent node message"));
+            .log_info(&format!("Successfully sent message {}", message_type));
     }
+
 }
