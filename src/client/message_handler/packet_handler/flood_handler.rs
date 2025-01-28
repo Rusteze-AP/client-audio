@@ -12,7 +12,7 @@ impl Client {
         let flood_req = FloodRequest {
             flood_id: Self::get_flood_id(state),
             initiator_id: state.id,
-            path_trace: vec![(state.id, NodeType::Server)],
+            path_trace: vec![(state.id, NodeType::Client)],
         };
         let session_id = state.packet_forge.get_session_id();
         let senders = state.senders.clone();
@@ -51,6 +51,7 @@ impl Client {
         sender: NodeId,
         packet: &Packet,
     ) -> Result<(), String> {
+
         let sender = Self::get_sender(sender, &state.senders);
 
         if let Err(err) = sender {
@@ -93,6 +94,8 @@ impl Client {
     }
 
     pub(crate) fn build_flood_response(flood_req: &FloodRequest) -> (NodeId, Packet) {
+        let mut flood_req = flood_req.clone();
+        flood_req.path_trace.push((flood_req.initiator_id, NodeType::Client));
         let mut packet = flood_req.generate_response(1); // Note: returns with hop_index = 0;
         packet.routing_header.increase_hop_index();
         let dest = packet.routing_header.current_hop();

@@ -15,9 +15,17 @@ mod node_messages;
 
 impl Client {
     pub(crate) fn packet_handler(state: &mut RwLockWriteGuard<ClientState>, packet: Packet) {
-        if packet.routing_header.hops.last() != Some(&state.id) {
-            state.logger.log_error("Received packet for another node");
-            return;
+        match packet.pack_type {
+            PacketType::FloodRequest(_) => {}
+            _ => {
+                if packet.routing_header.hops.last() != Some(&state.id) {
+                    state.logger.log_error(&format!(
+                        "Received packet for another node {:?} ",
+                        packet.routing_header.hops
+                    ));
+                    return;
+                }
+            }
         }
 
         state
@@ -92,6 +100,8 @@ impl Client {
         node_id: NodeId,
         senders: &HashMap<NodeId, Sender<Packet>>,
     ) -> Result<Sender<Packet>, String> {
+        println!("Get sender Node ID: {}", node_id);
+        println!("Get sender senders: {:?}", senders);
         if let Some(sender) = senders.get(&node_id) {
             return Ok(sender.clone());
         }

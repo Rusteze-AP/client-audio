@@ -13,6 +13,7 @@ impl Client {
 
         thread::spawn(move || loop {
             let mut state = self.state.write().unwrap();
+            
 
             if !state.servers_id.is_empty() {
                 state.logger.log_info("Server detected, intialize server connection");
