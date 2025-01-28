@@ -9,7 +9,7 @@ use wg_internal::network::NodeId;
 impl Client {
     pub(crate) fn send_subscribe(state: &mut RwLockWriteGuard<ClientState>) {
         let id = state.id;
-        let server_id = state.server_id;
+        let server_id = state.servers_id[0];
 
         //Retrive avilable file from db
         let file_list = match state.db.get_all_songs_meta() {
@@ -34,7 +34,7 @@ impl Client {
 
     pub(crate) fn send_unsubscribe(state: &mut RwLockWriteGuard<ClientState>) {
         let id = state.id;
-        let server_id = state.server_id;
+        let server_id = state.servers_id[0];
 
         let message = MessageType::UnsubscribeClient(UnsubscribeClient::new(id));
 
@@ -47,10 +47,24 @@ impl Client {
 
     pub(crate) fn send_request_filelist(state: &mut RwLockWriteGuard<ClientState>) {
         let id = state.id;
-        let server_id = state.server_id;
+        let server_id = state.servers_id[0];
 
         let message = MessageType::RequestFileList(RequestFileList::new(id));
         Self::send_message(state, message, id, server_id);
+    }
+
+    pub(crate) fn send_segment_request(&mut self, file_id: u16, segment: u32) {
+        let mut state = self.state.write().unwrap();
+        let id = state.id;
+        let server_id = state.servers_id[0];
+
+        let message = MessageType::ChunkRequest(packet_forge::ChunkRequest::new(
+            id,
+            file_id,
+            packet_forge::Index::Indexes(vec![segment]),
+        ));
+
+        Self::send_message(&mut state, message, id, server_id);
     }
 
     pub(crate) fn send_message(

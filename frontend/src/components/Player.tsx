@@ -164,9 +164,6 @@ const AudioPlayer = forwardRef((_props, ref) => {
         <PlayButtons
           isStreaming={isPlaying}
           onToggle={togglePlay}
-          onSkip={() => {
-            console.log("skippp");
-          }}
         />
       </div>
 

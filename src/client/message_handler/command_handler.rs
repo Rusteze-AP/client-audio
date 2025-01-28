@@ -1,5 +1,5 @@
 use super::Client;
-use crate::ClientState;
+use crate::{ClientState, Status};
 use crossbeam_channel::Sender;
 use std::sync::RwLockWriteGuard;
 use wg_internal::{controller::{DroneCommand, DroneEvent}, network::NodeId, packet::Packet};
@@ -9,7 +9,7 @@ impl Client {
         state: &mut RwLockWriteGuard<ClientState>,
         command: DroneCommand,
     ) {
-        if !state.terminated {
+        if state.status != Status::Terminated {
             let res = match command {
                 DroneCommand::RemoveSender(id) => Self::remove_sender(state, id),
                 DroneCommand::AddSender(id, sender) => Self::add_sender(state, id, &sender),
@@ -17,7 +17,7 @@ impl Client {
                     state
                         .logger
                         .log_debug("[SC COMMAND]]Received crash command. Terminating!");
-                    state.terminated = true;
+                    state.status = Status::Terminated;
                     Ok(())
                 }
                 _ => Err("[SC COMMAND]Received unhandled SC command (ChangePdr)!".to_string()),

@@ -1,10 +1,11 @@
 use super::Client;
 use crate::ClientState;
 use crossbeam_channel::Sender;
+use rocket::form::validate::Contains;
 use std::{collections::HashMap, sync::RwLockWriteGuard};
 use wg_internal::{
     network::NodeId,
-    packet::{Packet, PacketType},
+    packet::{NodeType, Packet, PacketType},
 };
 mod ack_handler;
 mod flood_handler;
@@ -29,6 +30,11 @@ impl Client {
             }
             PacketType::FloodResponse(flood_res) => {
                 state.routing_handler.update_graph(flood_res.clone());
+                for (id, node_type) in &flood_res.path_trace {
+                    if *node_type == NodeType::Server && !state.servers_id.contains(id) {
+                        state.servers_id.push(*id);
+                    }
+                }
             }
             PacketType::FloodRequest(flood_req) => {
                 Self::handle_flood_request(state, flood_req);
@@ -41,7 +47,6 @@ impl Client {
             }
         }
     }
-
 
     /// Takes a vector of packets and sends them to the `next_hop`
     pub(crate) fn send_packets_vec(

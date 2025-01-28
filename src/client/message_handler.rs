@@ -1,16 +1,26 @@
 mod command_handler;
 mod packet_handler;
-use super::Client;
+use super::{Client, Status};
 use crossbeam_channel::TryRecvError;
 use std::thread;
 
 impl Client {
     #[must_use]
     pub(crate) fn start_message_processing(self) -> thread::JoinHandle<()> {
+        let mut init_state = self.state.write().unwrap();
+        Self::init_flood_request(&mut init_state);
+        drop(init_state);
+
         thread::spawn(move || loop {
             let mut state = self.state.write().unwrap();
 
-            if state.terminated {
+            if !state.servers_id.is_empty() {
+                state.logger.log_info("Server detected, intialize server connection");
+                Self::send_subscribe(&mut state);
+                Self::send_request_filelist(&mut state);
+            }
+
+            if state.status == Status::Terminated {
                 break;
             }
 

@@ -1,5 +1,5 @@
 use super::Client;
-use crate::ClientState;
+use crate::{ClientState, Status};
 use packet_forge::{FileMetadata, MessageType};
 use std::sync::RwLockWriteGuard;
 use wg_internal::packet::{Fragment, Packet};
@@ -98,6 +98,7 @@ impl Client {
                         }
                     }
                 }
+                state.status = Status::Running;
             }
             _ => {
                 state
