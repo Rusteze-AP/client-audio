@@ -24,6 +24,7 @@ const AudioFileList: React.FC<AudioFileListProps> = ({ callback }) => {
         throw new Error(`Erroron fetch: ${response.statusText}`);
       }
       const files = await response.json();
+      console.log("Files:", files);
       setSongs(files);
     } catch (error) {
       console.error("Error on fetching files:", error);

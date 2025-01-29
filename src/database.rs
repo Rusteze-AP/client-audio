@@ -87,7 +87,7 @@ impl AudioDatabase {
                     if path.extension().and_then(|ext| ext.to_str()) == Some("m3u8") {
                         self.insert_song_segment(song_id.clone(), 0,entry_content)?;
                     } else if path.extension().and_then(|ext| ext.to_str()) == Some("ts") {
-                        let segment = path.file_stem().unwrap().to_string_lossy().to_string().replace("segment", "").parse::<u16>().unwrap();
+                        let segment: u32 = path.file_stem().unwrap().to_string_lossy().to_string().replace("segment", "").parse::<u32>().unwrap();
                         self.insert_song_segment(song_id.clone(), segment+1, entry_content)?;
                     } else {
                         return Err("Error: Invalid file extension".to_string());
@@ -115,7 +115,7 @@ impl AudioDatabase {
     pub fn insert_song_segment(
         &self,
         id: u16,
-        segment: u16,
+        segment: u32,
         payload: Vec<u8>,
     ) -> Result<(), String> {
         let mut key: Vec<u8> = Vec::new();
@@ -140,7 +140,7 @@ impl AudioDatabase {
         }
     }
 
-    pub fn get_song_segment(&self, id: u16, segment: u16) -> Result<Vec<u8>, String> {
+    pub fn get_song_segment(&self, id: u16, segment: u32) -> Result<Vec<u8>, String> {
         let mut key: Vec<u8> = Vec::new();
         key.extend_from_slice(&segment.to_be_bytes());
         key.extend_from_slice(&id.to_be_bytes());

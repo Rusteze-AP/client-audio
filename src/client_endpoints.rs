@@ -8,22 +8,23 @@ use rocket::State;
 #[get("/audio/<id>/<segment>")]
 pub async fn get_song(
     client: &State<Client>,
-    id: String,
-    segment: String,
+    id: &str,
+    segment: &str,
 ) -> Result<Vec<u8>, NotFound<String>> {
     let state = client.state.clone();
 
     let (sender, receiver): (Sender<bool>, Receiver<bool>) = unbounded();
     let id: u16 = id.parse().unwrap();
-    let mut segment_id = 0;
+    let mut segment_id: u32 = 0;
     if !segment.ends_with(".m3u8") {
         segment_id = segment
             .trim_end_matches(".ts")
             .replace("segment", "")
-            .parse::<u16>()
+            .parse::<u32>()
             .unwrap()
             + 1;
     }
+
     let read_state = state.read().unwrap();
     match read_state.db.get_song_segment(id, segment_id) {
         Ok(payload) => Ok(payload),
@@ -42,7 +43,7 @@ pub async fn get_song(
                 .write()
                 .unwrap()
                 .inner_senders
-                .insert((id, 0), sender.clone());
+                .insert((id, segment_id), sender.clone());
 
             //send request to node
             let mut client_mut = client.inner().clone();
@@ -53,11 +54,10 @@ pub async fn get_song(
                 Ok(res) => {
                     // check the result
                     if res {
-                        let playlist = state
-                            .read()
-                            .unwrap()
-                            .song_map
-                            .get(&(id, 0))
+                        let song_map = state.read().unwrap().song_map.clone();
+
+                        let playlist = song_map
+                            .get(&(id, segment_id))
                             .unwrap()
                             .clone();
                         Ok(playlist)
@@ -103,9 +103,9 @@ pub async fn audio_files(client: &State<Client>) -> Json<Vec<SongMetaData>> {
 #[get("/is-ready")]
 pub async fn is_ready(client: &State<Client>) -> Json<bool> {
     let state = client.state.clone();
-    println!("is_ready???? {:?}",state.read().unwrap().status);
+    println!("is_ready???? {:?}", state.read().unwrap().status);
     let res = state.read().unwrap().status == crate::Status::Running;
-    print!("is_ready???? {:?}",res);
+    print!("is_ready???? {:?}", res);
     Json(res)
 }
 

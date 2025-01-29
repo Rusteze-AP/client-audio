@@ -5,19 +5,17 @@ use crossbeam::channel::{Receiver, Sender};
 use logger::{LogLevel, Logger};
 use packet_forge::{FileHash, PacketForge, SessionIdT};
 use rocket::fs::relative;
-use rocket::time::error::DifferentVariant;
-use std::time::Duration;
 use rocket::{self, Build, Ignite, Rocket};
 use routing_handler::RoutingHandler;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::thread::sleep;
 use wg_internal::controller::{DroneCommand, DroneEvent};
 use wg_internal::network::NodeId;
 use wg_internal::packet::{Fragment, Packet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
+    Starting,
     Idle,
     Running,
     Terminated,
@@ -67,7 +65,7 @@ impl Client {
             senders,
             inner_senders: HashMap::new(),
             packet_forge: PacketForge::new(),
-            status: Status::Idle,
+            status: Status::Starting,
             db: AudioDatabase::new(db_path),
             logger: Logger::new(LogLevel::All as u8, false, format!("audio_client_{}", id)),
             routing_handler: RoutingHandler::new(),
