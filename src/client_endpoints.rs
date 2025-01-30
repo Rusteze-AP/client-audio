@@ -1,4 +1,4 @@
-use crate::Client;
+use crate::ClientAudio;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use packet_forge::SongMetaData;
 use rocket::response::status::NotFound;
@@ -7,7 +7,7 @@ use rocket::State;
 
 #[get("/audio/<id>/<segment>")]
 pub async fn get_song(
-    client: &State<Client>,
+    client: &State<ClientAudio>,
     id: &str,
     segment: &str,
 ) -> Result<Vec<u8>, NotFound<String>> {
@@ -60,6 +60,9 @@ pub async fn get_song(
                             .get(&(id, segment_id))
                             .unwrap()
                             .clone();
+
+                        state.write().unwrap().song_map.remove(&(id, segment_id));
+
                         Ok(playlist)
                     } else {
                         state
@@ -84,7 +87,7 @@ pub async fn get_song(
 }
 
 #[get("/audio-files")]
-pub async fn audio_files(client: &State<Client>) -> Json<Vec<SongMetaData>> {
+pub async fn audio_files(client: &State<ClientAudio>) -> Json<Vec<SongMetaData>> {
     let state = client.state.clone();
     let res = state.read().unwrap().db.get_all_songs_meta();
     match res {
@@ -101,7 +104,7 @@ pub async fn audio_files(client: &State<Client>) -> Json<Vec<SongMetaData>> {
 }
 
 #[get("/is-ready")]
-pub async fn is_ready(client: &State<Client>) -> Json<bool> {
+pub async fn is_ready(client: &State<ClientAudio>) -> Json<bool> {
     let state = client.state.clone();
     println!("is_ready???? {:?}", state.read().unwrap().status);
     let res = state.read().unwrap().status == crate::Status::Running;
@@ -110,7 +113,7 @@ pub async fn is_ready(client: &State<Client>) -> Json<bool> {
 }
 
 #[get("/get-id")]
-pub async fn get_id(client: &State<Client>) -> Json<u8> {
+pub async fn get_id(client: &State<ClientAudio>) -> Json<u8> {
     let state = client.state.clone();
     let res = state.read().unwrap().id;
     Json(res)

@@ -1,10 +1,10 @@
-use super::Client;
+use super::ClientAudio;
 use crate::ClientState;
 use packet_forge::SessionIdT;
 use std::sync::RwLockWriteGuard;
 use wg_internal::packet::{Nack, NackType, Packet};
 
-impl Client {
+impl ClientAudio {
     /// Handle different types of nacks
     pub(crate) fn nack_handler(
         state: &mut RwLockWriteGuard<ClientState>,

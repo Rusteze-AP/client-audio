@@ -1,4 +1,4 @@
-use super::Client;
+use super::ClientAudio;
 use crate::ClientState;
 use crossbeam_channel::Sender;
 use rocket::form::validate::Contains;
@@ -13,7 +13,7 @@ mod fragment_handler;
 mod nack_handler;
 mod node_messages;
 
-impl Client {
+impl ClientAudio {
     pub(crate) fn packet_handler(state: &mut RwLockWriteGuard<ClientState>, packet: Packet) {
         match packet.pack_type {
             PacketType::FloodRequest(_) => {}

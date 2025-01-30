@@ -1,10 +1,10 @@
-use super::Client;
+use super::ClientAudio;
 use crate::{ClientState, Status};
 use packet_forge::{FileMetadata, MessageType};
 use std::sync::RwLockWriteGuard;
 use wg_internal::packet::{Fragment, Packet};
 
-impl Client {
+impl ClientAudio {
     pub(crate) fn fragment_handler(
         state: &mut RwLockWriteGuard<ClientState>,
         fragment: &Fragment,

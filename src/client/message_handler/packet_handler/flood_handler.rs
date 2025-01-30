@@ -1,4 +1,4 @@
-use super::Client;
+use super::ClientAudio;
 use crate::ClientState;
 use std::sync::RwLockWriteGuard;
 use wg_internal::{
@@ -7,7 +7,7 @@ use wg_internal::{
     packet::{FloodRequest, NodeType, Packet},
 };
 
-impl Client {
+impl ClientAudio {
     pub(crate) fn init_flood_request(state: &mut RwLockWriteGuard<ClientState>) {
         let flood_req = FloodRequest {
             flood_id: Self::get_flood_id(state),

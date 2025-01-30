@@ -1,10 +1,10 @@
 mod command_handler;
 mod packet_handler;
-use super::{Client, Status};
+use super::{ClientAudio, Status};
 use crossbeam_channel::TryRecvError;
 use std::thread;
 
-impl Client {
+impl ClientAudio {
     #[must_use]
     pub(crate) fn start_message_processing(self) -> thread::JoinHandle<()> {
         let mut init_state = self.state.write().unwrap();

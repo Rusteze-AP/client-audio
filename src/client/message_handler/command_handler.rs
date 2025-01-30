@@ -1,10 +1,10 @@
-use super::Client;
+use super::ClientAudio;
 use crate::{ClientState, Status};
 use crossbeam_channel::Sender;
 use std::sync::RwLockWriteGuard;
 use wg_internal::{controller::{DroneCommand, DroneEvent}, network::NodeId, packet::Packet};
 
-impl Client {
+impl ClientAudio {
     pub(crate) fn command_handler(
         state: &mut RwLockWriteGuard<ClientState>,
         command: DroneCommand,

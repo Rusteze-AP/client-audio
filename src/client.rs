@@ -3,9 +3,9 @@ use crate::client_endpoints::{audio_files, get_id, get_song, is_ready};
 use crate::database::AudioDatabase;
 use crossbeam::channel::{Receiver, Sender};
 use logger::{LogLevel, Logger};
+use packet_forge::ClientT;
 use packet_forge::{FileHash, PacketForge, SessionIdT};
 use rocket::fs::relative;
-use rocket::{self, Build, Ignite, Rocket};
 use routing_handler::RoutingHandler;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -41,20 +41,20 @@ pub struct ClientState {
 }
 
 #[derive(Clone)]
-pub struct Client {
+pub struct ClientAudio {
     pub state: Arc<RwLock<ClientState>>,
 }
 
-impl Client {
-    #[must_use]
-    pub fn new(
+impl ClientT for ClientAudio {
+    fn new(
         id: NodeId,
         command_send: Sender<DroneEvent>,
         command_recv: Receiver<DroneCommand>,
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
+        init_client_path: &str,
     ) -> Self {
-        let db_path = &format!("initialization_files/client_audio/client-{}/db", id);
+        let db_path = &format!("db/client_audio/client-{}", id);
         let state = ClientState {
             id,
             flood_id: 0,
@@ -73,20 +73,23 @@ impl Client {
             packets_history: HashMap::new(),
             song_map: HashMap::new(),
         };
-
-        let local_path = &format!("initialization_files/client_audio/client-{}", id);
         // Initialize the database
-        match state.db.init(local_path) {
+        match state.db.init(init_client_path) {
             Ok(_) => state.logger.log_info("database initialized"),
             Err(e) => state.logger.log_error(e.as_str()),
         }
 
-        Client {
+        ClientAudio {
             state: Arc::new(RwLock::new(state)),
         }
     }
 
-    pub fn get_id(&self) -> NodeId {
+    fn run(self) -> impl std::future::Future<Output = ()> + Send {
+        let _processing_handle = self.clone().start_message_processing();
+        Self::configure(self)
+    }
+
+    fn get_id(&self) -> NodeId {
         match self.state.read() {
             Ok(state) => state.id,
             Err(e) => {
@@ -95,19 +98,18 @@ impl Client {
             }
         }
     }
+}
 
+impl ClientAudio {
     #[must_use]
-    fn configure(client: Client) -> Rocket<Build> {
+    async fn configure(client: ClientAudio) {
         let id = client.get_id();
-        rocket::build()
+        let _res = rocket::build()
             .manage(client)
             .configure(rocket::Config::figment().merge(("port", 8000 + id as u16)))
             .mount("/", routes![audio_files, get_song, is_ready, get_id])
             .mount("/", rocket::fs::FileServer::from(relative!("static")))
-    }
-
-    pub async fn run(self) -> Result<Rocket<Ignite>, rocket::Error> {
-        let _processing_handle = self.clone().start_message_processing();
-        Self::configure(self).launch().await
+            .launch()
+            .await;
     }
 }

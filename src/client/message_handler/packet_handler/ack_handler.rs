@@ -1,9 +1,9 @@
-use super::Client;
+use super::ClientAudio;
 use crate::ClientState;
 use std::sync::RwLockWriteGuard;
 use wg_internal::{controller::DroneEvent, packet::Packet};
 
-impl Client {
+impl ClientAudio {
     pub(crate) fn ack_handler(
         state: &mut RwLockWriteGuard<ClientState>,
         session_id: u64,

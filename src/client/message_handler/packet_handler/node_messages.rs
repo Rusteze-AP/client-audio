@@ -1,4 +1,4 @@
-use super::Client;
+use super::ClientAudio;
 use crate::ClientState;
 use packet_forge::{
     FileMetadata, MessageType, RequestFileList, SubscribeClient, UnsubscribeClient,
@@ -6,7 +6,7 @@ use packet_forge::{
 use std::sync::RwLockWriteGuard;
 use wg_internal::network::NodeId;
 
-impl Client {
+impl ClientAudio {
     pub(crate) fn send_subscribe(state: &mut RwLockWriteGuard<ClientState>) {
         let id = state.id;
         let server_id = state.servers_id[0];
