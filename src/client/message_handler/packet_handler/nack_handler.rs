@@ -59,7 +59,7 @@ impl ClientAudio {
         fragment_index: u64,
         session_id: SessionIdT,
     ) {
-        let dest = packet.routing_header.hops[packet.routing_header.hops.len()];
+        let dest = packet.routing_header.hops[packet.routing_header.hops.len()-1];
         let id = state.id;
         // Retrieve new best path from server to client otherwise return
         let srh = match state.routing_handler.best_path(id, dest) {
