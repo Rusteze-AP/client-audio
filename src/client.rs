@@ -6,7 +6,9 @@ use logger::{LogLevel, Logger};
 use packet_forge::ClientT;
 use packet_forge::{FileHash, PacketForge, SessionIdT};
 use rocket::fs::relative;
+use rocket::{Error, Ignite, Rocket};
 use routing_handler::RoutingHandler;
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use wg_internal::controller::{DroneCommand, DroneEvent};
@@ -52,7 +54,6 @@ impl ClientT for ClientAudio {
         command_recv: Receiver<DroneCommand>,
         receiver: Receiver<Packet>,
         senders: HashMap<NodeId, Sender<Packet>>,
-        init_client_path: &str,
     ) -> Self {
         let db_path = &format!("db/client_audio/client-{}", id);
         let state = ClientState {
@@ -73,20 +74,28 @@ impl ClientT for ClientAudio {
             packets_history: HashMap::new(),
             song_map: HashMap::new(),
         };
-        // Initialize the database
-        match state.db.init(init_client_path) {
-            Ok(_) => state.logger.log_info("database initialized"),
-            Err(e) => state.logger.log_error(e.as_str()),
-        }
 
         ClientAudio {
             state: Arc::new(RwLock::new(state)),
         }
     }
 
-    fn run(self) -> impl std::future::Future<Output = ()> + Send {
+    fn run(self: Box<Self>, init_client_path: &str) {
+        // Initialize the database
+        match self.state.read().unwrap().db.init(init_client_path) {
+            Ok(_) => self.state.read().unwrap().logger.log_info("Database initialized"),
+            Err(e) => self.state.read().unwrap().logger.log_error(e.as_str()),
+        }
+    
         let _processing_handle = self.clone().start_message_processing();
-        Self::configure(self)
+    
+        // Create a new Tokio runtime and block on `configure`
+        let runtime = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+        runtime.block_on(async move {
+            if let Err(e) = Self::configure(*self).await {
+                eprintln!("Failed to configure client: {}", e);
+            }
+        });
     }
 
     fn get_id(&self) -> NodeId {
@@ -98,18 +107,22 @@ impl ClientT for ClientAudio {
             }
         }
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl ClientAudio {
     #[must_use]
-    async fn configure(client: ClientAudio) {
+    async fn configure(client: ClientAudio) -> Result<Rocket<Ignite>, Error> {
         let id = client.get_id();
-        let _res = rocket::build()
+        rocket::build()
             .manage(client)
             .configure(rocket::Config::figment().merge(("port", 8000 + id as u16)))
             .mount("/", routes![audio_files, get_song, is_ready, get_id])
             .mount("/", rocket::fs::FileServer::from(relative!("static")))
             .launch()
-            .await;
+            .await
     }
 }

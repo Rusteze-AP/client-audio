@@ -158,7 +158,7 @@ impl AudioDatabase {
         for record in self.db.iter() {
             match record {
                 Ok((key, data)) => {
-                    if *key.get(0).unwrap() != 0 {
+                    if key.len() == 16 {
                         match bincode::deserialize(&data) {
                             Ok(song) => songs.push(song),
                             Err(e) => return Err(format!("Error deserializing song: {}", e)),
