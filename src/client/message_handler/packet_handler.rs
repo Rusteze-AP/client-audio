@@ -15,6 +15,7 @@ mod node_messages;
 
 impl ClientAudio {
     pub(crate) fn packet_handler(state: &mut RwLockWriteGuard<ClientState>, packet: Packet) {
+        state.routing_handler.nodes_congestion(packet.routing_header.clone());
         match packet.pack_type {
             PacketType::FloodRequest(_) => {}
             _ => {
@@ -52,7 +53,7 @@ impl ClientAudio {
                 Self::ack_handler(state, packet.session_id, ack.fragment_index);
             }
             PacketType::Nack(nack) => {
-                Self::nack_handler(state, nack, packet.session_id);
+                Self::nack_handler(state, nack, packet.session_id, packet.routing_header.hops[0]);
             }
         }
     }

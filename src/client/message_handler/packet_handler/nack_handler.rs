@@ -2,7 +2,7 @@ use super::ClientAudio;
 use crate::ClientState;
 use packet_forge::SessionIdT;
 use std::sync::RwLockWriteGuard;
-use wg_internal::packet::{Nack, NackType, Packet};
+use wg_internal::{network::NodeId, packet::{Nack, NackType, Packet}};
 
 impl ClientAudio {
     /// Handle different types of nacks
@@ -10,6 +10,7 @@ impl ClientAudio {
         state: &mut RwLockWriteGuard<ClientState>,
         message: &Nack,
         session_id: SessionIdT,
+        node_id: NodeId,
     ) {
         state.logger.log_warn(&format!(
             "Received Nack for [ ({}, {}) ]",
@@ -30,6 +31,7 @@ impl ClientAudio {
 
         match message.nack_type {
             NackType::Dropped => {
+                state.routing_handler.node_nack(node_id);
                 Self::retransmit_packet(state, &mut packet, message.fragment_index, session_id);
             }
             NackType::DestinationIsDrone => {
