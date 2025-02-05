@@ -68,7 +68,7 @@ impl ClientT for ClientAudio {
             packet_forge: PacketForge::new(),
             status: Status::Starting,
             db: AudioDatabase::new(db_path),
-            logger: Logger::new(LogLevel::All as u8, false, format!("audio_client_{}", id)),
+            logger: Logger::new(LogLevel::None as u8, false, format!("audio_client_{}", id)),
             routing_handler: RoutingHandler::new(),
             packets_map: HashMap::new(),
             packets_history: HashMap::new(),
@@ -131,6 +131,30 @@ impl ClientT for ClientAudio {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+    
+    fn with_info(&self) {
+        self.state.write().unwrap().logger.add_displayable_flag(LogLevel::Info);
+    }
+    
+    fn with_debug(&self) {
+        self.state.write().unwrap().logger.add_displayable_flag(LogLevel::Debug);
+    }
+    
+    fn with_error(&self) {
+        self.state.write().unwrap().logger.add_displayable_flag(LogLevel::Error);
+    }
+    
+    fn with_warning(&self) {
+        self.state.write().unwrap().logger.add_displayable_flag(LogLevel::Warn);
+    }
+    
+    fn with_all(&self) {
+        self.state.write().unwrap().logger.add_displayable_flag(LogLevel::All);
+    }
+    
+    fn with_web_socket(&self) {
+        self.state.write().unwrap().logger.init_web_socket();
     }
 }
 
