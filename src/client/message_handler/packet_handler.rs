@@ -58,7 +58,7 @@ impl ClientAudio {
                 state
                     .routing_handler
                     .nodes_congestion(packet.routing_header.clone());
-                Self::ack_handler(state, packet.session_id, ack.fragment_index);
+                Self::ack_handler(state, packet.session_id, ack.fragment_index, packet.routing_header);
             }
             PacketType::Nack(nack) => {
                 state

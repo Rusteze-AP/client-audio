@@ -1,14 +1,16 @@
 use super::ClientAudio;
 use crate::ClientState;
 use std::sync::RwLockWriteGuard;
-use wg_internal::{controller::DroneEvent, packet::Packet};
+use wg_internal::{controller::DroneEvent, network::SourceRoutingHeader, packet::Packet};
 
 impl ClientAudio {
     pub(crate) fn ack_handler(
         state: &mut RwLockWriteGuard<ClientState>,
         session_id: u64,
         fragment_index: u64,
+        routing_header: SourceRoutingHeader,
     ) {
+        state.routing_handler.nodes_ack(routing_header);
         let Some(_) = state.packets_history.remove(&(fragment_index, session_id)) else {
             state.logger.log_error(&format!(
                 "Failed to remove [ ({}, {}) ] key from packet history",
