@@ -19,7 +19,7 @@ impl ClientAudio {
                     .logger
                     .log_info("Server detected, intialize server connection");
                 Self::send_subscribe(&mut state);
-                Self::send_request_filelist(&mut state);
+                // Self::send_request_filelist(&mut state);
                 state.status = Status::Idle;
             }
 

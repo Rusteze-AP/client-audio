@@ -1,6 +1,7 @@
 use super::ClientAudio;
 use crate::{ClientState, Status};
 use packet_forge::{FileMetadata, MessageType};
+use tokio::sync::OwnedRwLockWriteGuard;
 use std::sync::RwLockWriteGuard;
 use wg_internal::packet::{Fragment, Packet};
 
