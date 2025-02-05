@@ -83,19 +83,40 @@ impl ClientT for ClientAudio {
     fn run(self: Box<Self>, init_client_path: &str) {
         // Initialize the database
         match self.state.read().unwrap().db.init(init_client_path) {
-            Ok(_) => self.state.read().unwrap().logger.log_info("Database initialized"),
+            Ok(_) => self
+                .state
+                .read()
+                .unwrap()
+                .logger
+                .log_info("Database initialized"),
             Err(e) => self.state.read().unwrap().logger.log_error(e.as_str()),
         }
-    
-        let _processing_handle = self.clone().start_message_processing();
-    
+
+        let processing_handle = self.clone().start_message_processing();
+
         // Create a new Tokio runtime and block on `configure`
         let runtime = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+        let self_clone = self.clone();
         runtime.block_on(async move {
-            if let Err(e) = Self::configure(*self).await {
+            if let Err(e) = Self::configure(*self_clone).await {
                 eprintln!("Failed to configure client: {}", e);
             }
         });
+
+        // Monitor termination flag in a separate task
+        let termination = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+        termination.block_on(async move {
+            loop {
+                if self.state.read().unwrap().status == Status::Terminated {
+                    // Wait for processing thread to complete
+                    let _ = processing_handle.join();
+                    println!("[CLIENT] Terminated");
+                    break;
+                }
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            }
+        });
+
     }
 
     fn get_id(&self) -> NodeId {

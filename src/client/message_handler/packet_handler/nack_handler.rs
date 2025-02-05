@@ -11,6 +11,10 @@ impl ClientAudio {
         message: &Nack,
         session_id: SessionIdT,
     ) {
+        state.logger.log_warn(&format!(
+            "Received Nack for [ ({}, {}) ]",
+            message.fragment_index, session_id
+        ));
         // Retrieve the packet that generated the nack
         let Some(mut packet) = state
             .packets_history
