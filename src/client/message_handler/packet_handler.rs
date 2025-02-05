@@ -15,7 +15,6 @@ mod node_messages;
 
 impl ClientAudio {
     pub(crate) fn packet_handler(state: &mut RwLockWriteGuard<ClientState>, packet: Packet) {
-        state.routing_handler.nodes_congestion(packet.routing_header.clone());
         match packet.pack_type {
             PacketType::FloodRequest(_) => {}
             _ => {
@@ -31,9 +30,15 @@ impl ClientAudio {
 
         match &packet.pack_type {
             PacketType::MsgFragment(fragment) => {
+                state
+                    .routing_handler
+                    .nodes_congestion(packet.routing_header.clone());
                 Self::fragment_handler(state, fragment, &packet);
             }
             PacketType::FloodResponse(flood_res) => {
+                state
+                    .routing_handler
+                    .nodes_congestion(packet.routing_header.clone());
                 state.logger.log_info(&format!(
                     "Received flood response with flood id: {}",
                     flood_res.flood_id
@@ -50,10 +55,21 @@ impl ClientAudio {
                 Self::handle_flood_request(state, flood_req);
             }
             PacketType::Ack(ack) => {
+                state
+                    .routing_handler
+                    .nodes_congestion(packet.routing_header.clone());
                 Self::ack_handler(state, packet.session_id, ack.fragment_index);
             }
             PacketType::Nack(nack) => {
-                Self::nack_handler(state, nack, packet.session_id, packet.routing_header.hops[0]);
+                state
+                    .routing_handler
+                    .nodes_congestion(packet.routing_header.clone());
+                Self::nack_handler(
+                    state,
+                    nack,
+                    packet.session_id,
+                    packet.routing_header.hops[0],
+                );
             }
         }
     }
@@ -83,9 +99,10 @@ impl ClientAudio {
                     next_hop, packet, err
                 ));
             }
-            state
-                .packets_history
-                .insert((packet.get_fragment_index(), packet.session_id), packet.clone());
+            state.packets_history.insert(
+                (packet.get_fragment_index(), packet.session_id),
+                packet.clone(),
+            );
             Self::event_dispatcher(state, packet, &packet_str);
         }
         Ok(())
