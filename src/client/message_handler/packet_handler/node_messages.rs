@@ -1,9 +1,12 @@
 use super::ClientAudio;
 use crate::ClientState;
+use base64::display;
 use packet_forge::{
     FileMetadata, MessageType, RequestFileList, SubscribeClient, UnsubscribeClient,
 };
-use std::sync::RwLockWriteGuard;
+use bytes::Bytes;
+use routing_handler::Node;
+use std::{sync::RwLockWriteGuard};
 use wg_internal::network::NodeId;
 
 impl ClientAudio {
@@ -53,18 +56,80 @@ impl ClientAudio {
         Self::send_message(state, message, id, server_id);
     }
 
-    pub(crate) fn send_segment_request(&mut self, file_id: u16, segment: u32) {
-        let mut state = self.state.write().unwrap();
+    pub(crate) fn send_chunk_response(
+        state: &mut RwLockWriteGuard<ClientState>,
+        file_id: u16,
+        segment: u32,
+        dst: NodeId,
+    ) {
         let id = state.id;
-        let server_id = state.servers_id[0];
+        let payload = match state.db.get_song_segment(file_id, segment) {
+            Ok(chunk) => chunk,
+            Err(e) => {
+                state.logger.log_error(&e);
+                return;
+            }
+        };
+        let chunk_data = Bytes::from(payload);
 
+        let message = MessageType::ChunkResponse(packet_forge::ChunkResponse::new(
+            file_id,
+            segment,
+            chunk_data,
+        ));
+
+        Self::send_message(state, message, id, dst);
+    }
+
+    pub(crate) fn send_internal_segment_request(
+        state: &mut RwLockWriteGuard<ClientState>,
+        file_id: u16,
+        segment: u32,
+    ) {
+        let id = state.id;
+
+        let dst = *state.client_song_map.get(&file_id).unwrap();
         let message = MessageType::ChunkRequest(packet_forge::ChunkRequest::new(
             id,
             file_id,
             packet_forge::Index::Indexes(vec![segment]),
         ));
 
-        Self::send_message(&mut state, message, id, server_id);
+        Self::send_message(state, message, id, dst);
+    }
+
+    pub(crate) fn send_segment_request(&mut self, file_id: u16, segment: u32) {
+        let mut state = self.state.write().unwrap();
+        let id = state.id;
+        let server_id = state.servers_id[0];
+
+        if segment == 0 {
+            let message = MessageType::RequestPeerList(packet_forge::RequestPeerList {
+                client_id: id,
+                file_hash: file_id,
+            });
+
+            Self::send_message(&mut state, message, id, server_id);
+            return;
+        } else {
+            match state.client_song_map.get(&file_id){
+                None => {
+                    state.logger.log_error(&format!("No client found for file {}", file_id));
+                    return;
+                }
+                Some(dst) => {
+                    let message = MessageType::ChunkRequest(packet_forge::ChunkRequest::new(
+                        id,
+                        file_id,
+                        packet_forge::Index::Indexes(vec![segment]),
+                    ));
+                    
+                    let dst_clone = *dst;
+                    Self::send_message(&mut state, message, id, dst_clone);
+                }
+            }
+            
+        }
     }
 
     pub(crate) fn send_message(
@@ -82,7 +147,7 @@ impl ClientAudio {
             MessageType::ChunkResponse(_) => "ChunkResponse",
             _ => "Unknown",
         };
-        //Comopute the best path
+        //Compute the best path
         let srh = match state.routing_handler.best_path(src, dst) {
             Some(srh) => srh,
             None => {
@@ -112,5 +177,4 @@ impl ClientAudio {
             .logger
             .log_info(&format!("Successfully sent message {}", message_type));
     }
-
 }

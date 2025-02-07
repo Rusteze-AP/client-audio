@@ -5,7 +5,6 @@ use crossbeam_channel::TryRecvError;
 use std::thread;
 
 impl ClientAudio {
-    #[must_use]
     pub(crate) fn start_message_processing(self) -> thread::JoinHandle<()> {
         let mut init_state = self.state.write().unwrap();
         Self::init_flood_request(&mut init_state);
@@ -50,6 +49,27 @@ impl ClientAudio {
                     ));
                 }
             }
+        })
+    }
+
+    pub(crate) fn refresh_network(self) -> thread::JoinHandle<()> {
+        thread::spawn(move || loop {
+            let mut state = self.state.write().unwrap();
+            let mut i = 0;
+            if state.status == Status::Terminated {
+                break;
+            }
+
+            if state.status == Status::Running {
+                Self::send_request_filelist(&mut state);
+                if i % 10 == 0 {
+                    Self::init_flood_request(&mut state);
+                }
+                i += 1;
+            }
+            drop(state);
+
+            thread::sleep(std::time::Duration::from_secs(5));
         })
     }
 }

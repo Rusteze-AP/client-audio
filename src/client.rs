@@ -10,6 +10,7 @@ use rocket::{Build, Config, Error, Ignite, Rocket};
 use routing_handler::RoutingHandler;
 use std::any::Any;
 use std::collections::HashMap;
+use std::fs::File;
 use std::sync::{Arc, LazyLock, RwLock};
 use wg_internal::controller::{DroneCommand, DroneEvent};
 use wg_internal::network::NodeId;
@@ -41,6 +42,7 @@ pub struct ClientState {
     pub logger: Logger,
     pub routing_handler: RoutingHandler,
     pub packets_map: HashMap<(NodeId, SessionIdT), Vec<Fragment>>,
+    pub client_song_map: HashMap<FileHash, NodeId>,
     pub song_map: HashMap<(FileHash, u32), Vec<u8>>,
     pub packets_history: HashMap<(u64, SessionIdT), Packet>,
 }
@@ -144,6 +146,7 @@ impl ClientAudio {
             packets_map: HashMap::new(),
             packets_history: HashMap::new(),
             song_map: HashMap::new(),
+            client_song_map: HashMap::new(),
         };
 
         ClientAudio {
@@ -178,6 +181,7 @@ impl ClientAudio {
         }
 
         let processing_handle = self.clone().start_message_processing();
+        let refresh_network_handle = self.clone().refresh_network();
         let state = self.state.clone();
 
         // Launch rocket in a separate task
@@ -189,6 +193,7 @@ impl ClientAudio {
                 if state.read().unwrap().status == Status::Terminated {
                     // Wait for processing thread to complete
                     let _ = processing_handle.join();
+                    let _ = refresh_network_handle.join();
                     break;
                 }
                 tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;

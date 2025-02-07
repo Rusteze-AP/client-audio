@@ -1,8 +1,8 @@
 use super::ClientAudio;
 use crate::{ClientState, Status};
-use packet_forge::{FileMetadata, MessageType};
-use tokio::sync::OwnedRwLockWriteGuard;
+use packet_forge::{FileMetadata, Index, MessageType};
 use std::sync::RwLockWriteGuard;
+use tokio::sync::OwnedRwLockWriteGuard;
 use wg_internal::packet::{Fragment, Packet};
 
 impl ClientAudio {
@@ -99,8 +99,31 @@ impl ClientAudio {
                         }
                     }
                 }
-                
+
                 state.status = Status::Running;
+            }
+            MessageType::ResponsePeerList(list) => {
+                state
+                    .logger
+                    .log_info(&format!("Received peer list {:?}", list));
+                state
+                    .client_song_map
+                    .insert(list.file_hash, list.peers[0].client_id);
+                Self::send_internal_segment_request(state, list.file_hash, 0);
+            }
+            MessageType::ChunkRequest(chunk) => {
+                state.logger.log_info(&format!(
+                    "Received chunk request for file {}",
+                    chunk.file_hash
+                ));
+                if let Index::Indexes(vec) = &chunk.chunk_index {
+                    for chunk_index in vec {
+                        Self::send_chunk_response(state, chunk.file_hash, *chunk_index, chunk.client_id);
+                    }
+                }
+                else{
+                    state.logger.log_error("Invalid chunk index");
+                }
             }
             _ => {
                 state
