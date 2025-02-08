@@ -204,6 +204,7 @@ impl ClientAudio {
             _ = rocket => {},
             _ = termination_handle => {},
         }
+        
         println!("[CLIENT] Terminated");
     }
 

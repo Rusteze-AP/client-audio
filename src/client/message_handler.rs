@@ -67,13 +67,11 @@ impl ClientAudio {
             }
 
             if state.write().unwrap().status == Status::Running {
+                thread::sleep(std::time::Duration::from_secs(20));
                 Self::send_request_filelist(&mut state.write().unwrap());
 
                 thread::sleep(std::time::Duration::from_secs(60));
-
                 Self::init_flood_request(&mut state.write().unwrap());
-
-                thread::sleep(std::time::Duration::from_secs(60));
             }
         })
     }
