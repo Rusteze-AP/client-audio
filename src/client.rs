@@ -182,7 +182,6 @@ impl ClientAudio {
         }
 
         let processing_handle = self.clone().start_message_processing();
-        let refresh_network_handle = self.clone().refresh_network();
         let state = self.state.clone();
 
         // Launch rocket in a separate task
@@ -194,7 +193,6 @@ impl ClientAudio {
                 if state.read().unwrap().status == Status::Terminated {
                     // Wait for processing thread to complete
                     let _ = processing_handle.join();
-                    let _ = refresh_network_handle.join();
                     break;
                 }
                 tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;

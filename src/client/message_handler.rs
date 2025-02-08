@@ -12,6 +12,8 @@ impl ClientAudio {
         Self::init_flood_request(&mut init_state);
         drop(init_state);
 
+        self.refresh_network();
+
         thread::spawn(move || loop {
             let mut state = self.state.write().unwrap();
 
@@ -57,22 +59,19 @@ impl ClientAudio {
     }
 
     /// Thread that will refresh the network every 60 seconds by sending a request filelist and a flood request.
-    pub(crate) fn refresh_network(self) -> thread::JoinHandle<()> {
+    pub(crate) fn refresh_network(&self) -> thread::JoinHandle<()> {
+        let state = self.state.clone();
         thread::spawn(move || loop {
-            let mut state = self.state.write().unwrap();
-            if state.status == Status::Terminated {
+            if state.write().unwrap().status == Status::Terminated {
                 break;
             }
 
-            if state.status == Status::Running {
-                Self::send_request_filelist(&mut state);
-                drop(state);
+            if state.write().unwrap().status == Status::Running {
+                Self::send_request_filelist(&mut state.write().unwrap());
 
                 thread::sleep(std::time::Duration::from_secs(60));
 
-                let mut state = self.state.write().unwrap();
-                Self::init_flood_request(&mut state);
-                drop(state);
+                Self::init_flood_request(&mut state.write().unwrap());
 
                 thread::sleep(std::time::Duration::from_secs(60));
             }
