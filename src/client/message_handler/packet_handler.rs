@@ -14,7 +14,9 @@ mod nack_handler;
 mod node_messages;
 
 impl ClientAudio {
+    /// Handles the packets received by the drones
     pub(crate) fn packet_handler(state: &mut RwLockWriteGuard<ClientState>, packet: Packet) {
+        // Check if the packet is for the current node
         match packet.pack_type {
             PacketType::FloodRequest(_) => {}
             _ => {
@@ -29,12 +31,14 @@ impl ClientAudio {
         }
 
         match &packet.pack_type {
+            // for packets that is not flood request the congestion of the nodes is updated
             PacketType::MsgFragment(fragment) => {
                 state
                     .routing_handler
                     .nodes_congestion(packet.routing_header.clone());
                 Self::fragment_handler(state, fragment, &packet);
             }
+            // Handle the flood response packet by updating the graph
             PacketType::FloodResponse(flood_res) => {
                 state
                     .routing_handler
@@ -89,10 +93,6 @@ impl ClientAudio {
 
         for packet in packets {
             let packet_str = Self::get_packet_type(&packet.pack_type);
-            // IF PACKET IS ACK, NACK OR FLOOD RESPONSE ADD TRY CONTROLLERSHORTCUT
-            if packet_str == "Ack" || packet_str == "Nack" || packet_str == "Flood response" {
-                // TODO Send Ack Nack Flood response to SC
-            }
             if let Err(err) = Self::send_packet(&sender, packet) {
                 return Err(format!(
                     "Failed to send packet to [DRONE-{}].\nPacket: {}\n Error: {}",
@@ -108,6 +108,7 @@ impl ClientAudio {
         Ok(())
     }
 
+    /// Send a packet to the next hop
     pub(crate) fn send_packet(sender: &Sender<Packet>, packet: &Packet) -> Result<(), String> {
         match sender.send(packet.clone()) {
             Ok(()) => Ok(()),

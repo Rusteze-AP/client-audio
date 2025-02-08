@@ -1,15 +1,12 @@
 use super::ClientAudio;
 use crate::ClientState;
-use base64::display;
-use packet_forge::{
-    FileMetadata, MessageType, RequestFileList, SubscribeClient, UnsubscribeClient,
-};
 use bytes::Bytes;
-use routing_handler::Node;
-use std::{sync::RwLockWriteGuard};
+use packet_forge::{FileMetadata, MessageType, RequestFileList, SubscribeClient};
+use std::sync::RwLockWriteGuard;
 use wg_internal::network::NodeId;
 
 impl ClientAudio {
+    /// Send subscribe message to the server
     pub(crate) fn send_subscribe(state: &mut RwLockWriteGuard<ClientState>) {
         let id = state.id;
         let server_id = state.servers_id[0];
@@ -35,19 +32,7 @@ impl ClientAudio {
         Self::send_message(state, message, id, server_id);
     }
 
-    pub(crate) fn send_unsubscribe(state: &mut RwLockWriteGuard<ClientState>) {
-        let id = state.id;
-        let server_id = state.servers_id[0];
-
-        let message = MessageType::UnsubscribeClient(UnsubscribeClient::new(id));
-
-        Self::send_message(state, message, id, server_id);
-    }
-
-    pub(crate) fn send_update_filelist(state: &mut RwLockWriteGuard<ClientState>) {
-        //TODO mabe to implement
-    }
-
+    /// Send request file list message to the server
     pub(crate) fn send_request_filelist(state: &mut RwLockWriteGuard<ClientState>) {
         let id = state.id;
         let server_id = state.servers_id[0];
@@ -56,6 +41,7 @@ impl ClientAudio {
         Self::send_message(state, message, id, server_id);
     }
 
+    // Send a chunk response to the destination node. Used in peer-to-peer communication.
     pub(crate) fn send_chunk_response(
         state: &mut RwLockWriteGuard<ClientState>,
         file_id: u16,
@@ -73,14 +59,13 @@ impl ClientAudio {
         let chunk_data = Bytes::from(payload);
 
         let message = MessageType::ChunkResponse(packet_forge::ChunkResponse::new(
-            file_id,
-            segment,
-            chunk_data,
+            file_id, segment, chunk_data,
         ));
 
         Self::send_message(state, message, id, dst);
     }
 
+    // Send a segment request to the destination node. Used by the thread after receving the peer list.
     pub(crate) fn send_internal_segment_request(
         state: &mut RwLockWriteGuard<ClientState>,
         file_id: u16,
@@ -98,11 +83,13 @@ impl ClientAudio {
         Self::send_message(state, message, id, dst);
     }
 
+    /// Send a segment request to the destination node. Used by the rocket server.
     pub(crate) fn send_segment_request(&mut self, file_id: u16, segment: u32) {
         let mut state = self.state.write().unwrap();
         let id = state.id;
         let server_id = state.servers_id[0];
 
+        // if the playlist is needed send peer list request to server
         if segment == 0 {
             let message = MessageType::RequestPeerList(packet_forge::RequestPeerList {
                 client_id: id,
@@ -112,9 +99,13 @@ impl ClientAudio {
             Self::send_message(&mut state, message, id, server_id);
             return;
         } else {
-            match state.client_song_map.get(&file_id){
+            // else send the segment request to the peer
+
+            match state.client_song_map.get(&file_id) {
                 None => {
-                    state.logger.log_error(&format!("No client found for file {}", file_id));
+                    state
+                        .logger
+                        .log_error(&format!("No client found for file {}", file_id));
                     return;
                 }
                 Some(dst) => {
@@ -123,21 +114,22 @@ impl ClientAudio {
                         file_id,
                         packet_forge::Index::Indexes(vec![segment]),
                     ));
-                    
+
                     let dst_clone = *dst;
                     Self::send_message(&mut state, message, id, dst_clone);
                 }
             }
-            
         }
     }
 
+    /// Send a packet with the path to the destination node
     pub(crate) fn send_message(
         state: &mut RwLockWriteGuard<ClientState>,
         message: MessageType,
         src: NodeId,
         dst: NodeId,
     ) {
+        // for logging purposes
         let message_type = match message {
             MessageType::SubscribeClient(_) => "SubscribeClient",
             MessageType::UnsubscribeClient(_) => "UnsubscribeClient",
@@ -147,6 +139,7 @@ impl ClientAudio {
             MessageType::ChunkResponse(_) => "ChunkResponse",
             _ => "Unknown",
         };
+
         //Compute the best path
         let srh = match state.routing_handler.best_path(src, dst) {
             Some(srh) => srh,
@@ -158,6 +151,7 @@ impl ClientAudio {
             }
         };
 
+        // disassemble the message into frames of the correct size
         let frames = match state.packet_forge.disassemble(message, &srh) {
             Ok(frames) => frames,
             Err(e) => {
@@ -168,6 +162,7 @@ impl ClientAudio {
             }
         };
 
+        // send all the frames to the next hop
         if let Err(e) = Self::send_packets_vec(state, &frames, srh.current_hop().unwrap()) {
             state.logger.log_error(&e);
             return;

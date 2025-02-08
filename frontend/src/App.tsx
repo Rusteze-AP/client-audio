@@ -43,7 +43,7 @@ function App() {
       <div className="flex items-center justify-center min-h-screen bg-orange-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-500 mx-auto"></div>
-          <p className="text-orange-600 mt-4 font-medium">Client in idle state...</p>
+          <p className="text-orange-600 mt-4 font-medium">Loading...</p>
         </div>
       </div>
     );

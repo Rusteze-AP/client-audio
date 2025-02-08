@@ -1,4 +1,3 @@
-mod message_handler;
 use crate::client_endpoints::{audio_files, get_id, get_song, is_ready};
 use crate::database::AudioDatabase;
 use crossbeam::channel::{Receiver, Sender};
@@ -6,15 +5,14 @@ use logger::{LogLevel, Logger};
 use packet_forge::ClientT;
 use packet_forge::{FileHash, PacketForge, SessionIdT};
 use rocket::fs::relative;
-use rocket::{Build, Config, Error, Ignite, Rocket};
+use rocket::{Build, Config, Rocket};
 use routing_handler::RoutingHandler;
-use std::any::Any;
 use std::collections::HashMap;
-use std::fs::File;
 use std::sync::{Arc, LazyLock, RwLock};
 use wg_internal::controller::{DroneCommand, DroneEvent};
 use wg_internal::network::NodeId;
 use wg_internal::packet::{Fragment, Packet};
+mod message_handler;
 
 static RT: LazyLock<tokio::runtime::Runtime> =
     LazyLock::new(|| tokio::runtime::Runtime::new().unwrap());
@@ -168,6 +166,9 @@ impl ClientAudio {
             .mount("/", rocket::fs::FileServer::from(relative!("static")))
     }
 
+    /// Start the thread that processes incoming messages and the rocket endpoints
+    ///
+    /// init_client_path: path to the client's database
     async fn run_internal(self, init_client_path: &str) {
         // Initialize the database
         match self.state.read().unwrap().db.init(init_client_path) {

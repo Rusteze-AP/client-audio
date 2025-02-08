@@ -2,10 +2,10 @@ use super::ClientAudio;
 use crate::{ClientState, Status};
 use packet_forge::{FileMetadata, Index, MessageType};
 use std::sync::RwLockWriteGuard;
-use tokio::sync::OwnedRwLockWriteGuard;
 use wg_internal::packet::{Fragment, Packet};
 
 impl ClientAudio {
+    /// Handles the fragment of a packet
     pub(crate) fn fragment_handler(
         state: &mut RwLockWriteGuard<ClientState>,
         fragment: &Fragment,
@@ -38,22 +38,24 @@ impl ClientAudio {
                     return;
                 }
             };
-
+            // menage the entire message
             Self::handle_node_message(state, assembled);
         }
     }
 
+    /// Handles the message received from the node
     pub(crate) fn handle_node_message(
         state: &mut RwLockWriteGuard<ClientState>,
         message: MessageType,
     ) {
         match message {
+            // When the chunk response is received, put the chunk in the buffer and send the event to the rocket endpoint
             MessageType::ChunkResponse(chunk) => {
                 state.logger.log_info(&format!(
                     "Received chunk response for file {}",
                     chunk.file_hash
                 ));
-
+                // get the channel corresponding to the chunk
                 let sender = state
                     .inner_senders
                     .get(&(chunk.file_hash, chunk.chunk_index))
@@ -78,6 +80,7 @@ impl ClientAudio {
                 }
                 chunk.file_hash;
             }
+            // When the file list is received, insert the new songs metadata in the database
             MessageType::ResponseFileList(list) => {
                 for song in list.file_list {
                     match song {
@@ -91,6 +94,7 @@ impl ClientAudio {
                                     .log_error(&format!("Failed to insert song metadata: {}", e));
                             }
                         }
+                        // this client does not handle video files
                         FileMetadata::Video(video) => {
                             state.logger.log_info(&format!(
                                 "Received video metadata: {} - Drop it",
@@ -99,9 +103,10 @@ impl ClientAudio {
                         }
                     }
                 }
-
+                // if the client is not already running, set the status to running
                 state.status = Status::Running;
             }
+            // When the peer list is received, insert the peer in the client_song_map and send the first segment request to the node
             MessageType::ResponsePeerList(list) => {
                 state
                     .logger
@@ -111,6 +116,7 @@ impl ClientAudio {
                     .insert(list.file_hash, list.peers[0].client_id);
                 Self::send_internal_segment_request(state, list.file_hash, 0);
             }
+            // When a peer asks for a chunk, send the chunk response to the node
             MessageType::ChunkRequest(chunk) => {
                 state.logger.log_info(&format!(
                     "Received chunk request for file {}",

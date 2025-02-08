@@ -5,6 +5,13 @@ use rocket::response::status::NotFound;
 use rocket::serde::json::Json;
 use rocket::State;
 
+/// Get the song payload from the network
+/// 
+/// It first checks if the song is in the database.
+/// If it is not in the database, it sends a peer list request to the server and waits for the response.
+/// The server answers with the node that has the song and than the client sends a request to the node.
+/// 
+/// When the request is sent the thread waits to receive the response from the other thread with a crossbeam channel.
 #[get("/audio/<id>/<segment>")]
 pub async fn get_song(
     client: &State<ClientAudio>,
@@ -49,7 +56,7 @@ pub async fn get_song(
             let mut client_mut = client.inner().clone();
             client_mut.send_segment_request(id, segment_id as u32);
 
-            //waiting for response
+            //waiting for response from the other thread
             match receiver.recv() {
                 Ok(res) => {
                     // check the result
@@ -59,8 +66,9 @@ pub async fn get_song(
                         let playlist = song_map
                             .get(&(id, segment_id))
                             .unwrap()
-                            .clone();
+                            .clone();  
 
+                        // remove the song from the map as it is cached in the frontend
                         state.write().unwrap().song_map.remove(&(id, segment_id));
 
                         Ok(playlist)
@@ -86,6 +94,7 @@ pub async fn get_song(
     }
 }
 
+/// Get the song metadata that is syncronized with the network
 #[get("/audio-files")]
 pub async fn audio_files(client: &State<ClientAudio>) -> Json<Vec<SongMetaData>> {
     let state = client.state.clone();
@@ -103,6 +112,7 @@ pub async fn audio_files(client: &State<ClientAudio>) -> Json<Vec<SongMetaData>>
     }
 }
 
+/// Check if the client is ready to stream audio
 #[get("/is-ready")]
 pub async fn is_ready(client: &State<ClientAudio>) -> Json<bool> {
     let state = client.state.clone();
@@ -112,6 +122,7 @@ pub async fn is_ready(client: &State<ClientAudio>) -> Json<bool> {
     Json(res)
 }
 
+/// Get the client id
 #[get("/get-id")]
 pub async fn get_id(client: &State<ClientAudio>) -> Json<u8> {
     let state = client.state.clone();

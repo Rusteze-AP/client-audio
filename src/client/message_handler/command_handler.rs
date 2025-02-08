@@ -5,6 +5,7 @@ use std::sync::RwLockWriteGuard;
 use wg_internal::{controller::{DroneCommand, DroneEvent}, network::NodeId, packet::Packet};
 
 impl ClientAudio {
+    /// Handles the command received from the simulation controller.
     pub(crate) fn command_handler(
         state: &mut RwLockWriteGuard<ClientState>,
         command: DroneCommand,
@@ -13,6 +14,7 @@ impl ClientAudio {
             let res = match command {
                 DroneCommand::RemoveSender(id) => Self::remove_sender(state, id),
                 DroneCommand::AddSender(id, sender) => Self::add_sender(state, id, &sender),
+                // when the simulation controller sends a crash command, change the status to terminated
                 DroneCommand::Crash => {
                     state
                         .logger
@@ -52,6 +54,7 @@ impl ClientAudio {
         ));
     }
 
+    /// Sends a command to the simulation controller.
     pub(crate) fn sc_send_packet(
         sender: &Sender<DroneEvent>,
         packet: &DroneEvent,
@@ -64,6 +67,7 @@ impl ClientAudio {
         }
     }
 
+    /// Remove the sender with the given `id` from the `senders` map.
     pub(crate) fn remove_sender(
         state: &mut RwLockWriteGuard<ClientState>,
         id: NodeId,
@@ -78,6 +82,7 @@ impl ClientAudio {
         Ok(())
     }
 
+    /// Add the sender with the given `id` to the `senders` map.
     pub(crate) fn add_sender(
         state: &mut RwLockWriteGuard<ClientState>,
         id: NodeId,

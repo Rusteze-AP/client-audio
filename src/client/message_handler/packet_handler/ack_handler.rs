@@ -4,6 +4,8 @@ use std::sync::RwLockWriteGuard;
 use wg_internal::{controller::DroneEvent, network::SourceRoutingHeader, packet::Packet};
 
 impl ClientAudio {
+    /// Handles the `Ack` packet. It removes the packet from the `packets_history` and calls the `nodes_ack` method from the `routing_handler`.
+    /// In this manner the nodes weights are updated.
     pub(crate) fn ack_handler(
         state: &mut RwLockWriteGuard<ClientState>,
         session_id: u64,

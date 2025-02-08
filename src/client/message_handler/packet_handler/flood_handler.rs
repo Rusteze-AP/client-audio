@@ -8,6 +8,7 @@ use wg_internal::{
 };
 
 impl ClientAudio {
+    /// Initiate a flood request broadcast to all drones
     pub(crate) fn init_flood_request(state: &mut RwLockWriteGuard<ClientState>) {
         let flood_req = FloodRequest {
             flood_id: Self::get_flood_id(state),
@@ -46,6 +47,7 @@ impl ClientAudio {
         }
     }
 
+    /// Send the flood response back to the sender
     fn send_flood_response(
         state: &mut RwLockWriteGuard<ClientState>,
         sender: NodeId,
@@ -93,6 +95,7 @@ impl ClientAudio {
         state.flood_id
     }
 
+    /// Build a flood response for the received flood request
     pub(crate) fn build_flood_response(node_id: NodeId, flood_req: &FloodRequest) -> (NodeId, Packet) {
         let mut flood_req = flood_req.clone();
         flood_req.path_trace.push((node_id, NodeType::Client));

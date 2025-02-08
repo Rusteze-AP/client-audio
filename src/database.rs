@@ -84,6 +84,7 @@ impl AudioDatabase {
                         format!("Error reading segment file {}: {}", path.display(), e)
                     })?;
 
+                    // Push the payload to the database
                     if path.extension().and_then(|ext| ext.to_str()) == Some("m3u8") {
                         self.insert_song_segment(song_id.clone(), 0,entry_content)?;
                     } else if path.extension().and_then(|ext| ext.to_str()) == Some("ts") {
@@ -112,6 +113,7 @@ impl AudioDatabase {
         }
     }
 
+    /// Insert the song payload into the database, the key is the song ID and the segment number
     pub fn insert_song_segment(
         &self,
         id: u16,
@@ -128,7 +130,6 @@ impl AudioDatabase {
     }
 
     /// Get the song metadata from the database
-    /// If the song is stored locally, the payload is also returned
     pub fn get_song_meta(&self, id: u16) -> Result<SongMetaData, String> {
         match self.db.get(id.to_be_bytes()) {
             Ok(Some(data)) => {
@@ -140,6 +141,7 @@ impl AudioDatabase {
         }
     }
 
+    /// Get the song payload from the database
     pub fn get_song_segment(&self, id: u16, segment: u32) -> Result<Vec<u8>, String> {
         let mut key: Vec<u8> = Vec::new();
         key.extend_from_slice(&segment.to_be_bytes());
