@@ -58,7 +58,7 @@ pub async fn get_song(
             client_mut.send_segment_request(id, segment_id as u32);
 
             //waiting for response from the other thread
-            match receiver.recv_timeout(Duration::from_secs(1)) {
+            match receiver.recv_timeout(Duration::from_secs(10)) {
                 Ok(res) => {
                     // check the result
                     if res {
