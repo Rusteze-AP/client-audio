@@ -29,7 +29,7 @@ impl ClientAudio {
             file_list,
         ));
 
-        Self::send_message(state, message, id, server_id);
+        let _ = Self::send_message(state, message, id, server_id);
     }
 
     /// Send request file list message to the server
@@ -38,7 +38,7 @@ impl ClientAudio {
         let server_id = state.servers_id[0];
 
         let message = MessageType::RequestFileList(RequestFileList::new(id));
-        Self::send_message(state, message, id, server_id);
+        let _ = Self::send_message(state, message, id, server_id);
     }
 
     // Send a chunk response to the destination node. Used in peer-to-peer communication.
@@ -59,10 +59,10 @@ impl ClientAudio {
         let chunk_data = Bytes::from(payload);
 
         let message = MessageType::ChunkResponse(packet_forge::ChunkResponse::new(
-            file_id, segment, 0,chunk_data,
+            file_id, segment, 0, chunk_data,
         ));
 
-        Self::send_message(state, message, id, dst);
+        let _ = Self::send_message(state, message, id, dst);
     }
 
     // Send a segment request to the destination node. Used by the thread after receving the peer list.
@@ -80,7 +80,33 @@ impl ClientAudio {
             packet_forge::Index::Indexes(vec![segment]),
         ));
 
-        Self::send_message(state, message, id, dst);
+        match Self::send_message(state, message, id, dst) {
+            Ok(()) => {
+                state
+                    .logger
+                    .log_info(&format!("Successfully sent segment request"));
+            }
+            Err(()) => {
+                let sender = state.inner_senders.get(&(file_id, segment)).cloned();
+
+                match sender {
+                    Some(sender) => {
+                        // send the event to the rocket server
+                        sender.send(false).unwrap();
+                    }
+                    None => {
+                        state.logger.log_error(&format!(
+                            "No inner sender found for file {} to send error",
+                            file_id
+                        ));
+                    }
+                }
+
+                state
+                    .logger
+                    .log_error(&format!("Failed to send segment request"));
+            }
+        }
     }
 
     /// Send a segment request to the destination node. Used by the rocket server.
@@ -96,7 +122,33 @@ impl ClientAudio {
                 file_hash: file_id,
             });
 
-            Self::send_message(&mut state, message, id, server_id);
+            match Self::send_message(&mut state, message, id, server_id) {
+                Ok(()) => {
+                    state
+                        .logger
+                        .log_info(&format!("Successfully sent segment request"));
+                }
+                Err(()) => {
+                    let sender = state.inner_senders.get(&(file_id, segment)).cloned();
+
+                    match sender {
+                        Some(sender) => {
+                            // send the event to the rocket server
+                            sender.send(false).unwrap();
+                        }
+                        None => {
+                            state.logger.log_error(&format!(
+                                "No inner sender found for file {} to send error",
+                                file_id
+                            ));
+                        }
+                    }
+
+                    state
+                        .logger
+                        .log_error(&format!("Failed to send segment request"));
+                }
+            }
             return;
         } else {
             // else send the segment request to the peer
@@ -116,7 +168,33 @@ impl ClientAudio {
                     ));
 
                     let dst_clone = *dst;
-                    Self::send_message(&mut state, message, id, dst_clone);
+                    match Self::send_message(&mut state, message, id, dst_clone) {
+                        Ok(()) => {
+                            state
+                                .logger
+                                .log_info(&format!("Successfully sent segment request"));
+                        }
+                        Err(()) => {
+                            let sender = state.inner_senders.get(&(file_id, segment)).cloned();
+
+                            match sender {
+                                Some(sender) => {
+                                    // send the event to the rocket server
+                                    sender.send(false).unwrap();
+                                }
+                                None => {
+                                    state.logger.log_error(&format!(
+                                        "No inner sender found for file {} to send error",
+                                        file_id
+                                    ));
+                                }
+                            }
+
+                            state
+                                .logger
+                                .log_error(&format!("Failed to send segment request"));
+                        }
+                    }
                 }
             }
         }
@@ -128,7 +206,7 @@ impl ClientAudio {
         message: MessageType,
         src: NodeId,
         dst: NodeId,
-    ) {
+    ) -> Result<(), ()> {
         // for logging purposes
         let message_type = match message {
             MessageType::SubscribeClient(_) => "SubscribeClient",
@@ -147,7 +225,7 @@ impl ClientAudio {
                 state
                     .logger
                     .log_error(&format!("No path found from {} to {}!", src, dst));
-                return;
+                return Err(());
             }
         };
 
@@ -158,18 +236,19 @@ impl ClientAudio {
                 state
                     .logger
                     .log_error(&format!("error on node messge disassemble: {}", e));
-                return;
+                return Err(());
             }
         };
 
         // send all the frames to the next hop
         if let Err(e) = Self::send_packets_vec(state, &frames, srh.current_hop().unwrap()) {
             state.logger.log_error(&e);
-            return;
+            return Err(());
         }
 
         state
             .logger
             .log_info(&format!("Successfully sent message {}", message_type));
+        Ok(())
     }
 }
