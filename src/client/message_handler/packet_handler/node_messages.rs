@@ -59,7 +59,7 @@ impl ClientAudio {
         let chunk_data = Bytes::from(payload);
 
         let message = MessageType::ChunkResponse(packet_forge::ChunkResponse::new(
-            file_id, segment, chunk_data,
+            file_id, segment, 0,chunk_data,
         ));
 
         Self::send_message(state, message, id, dst);
