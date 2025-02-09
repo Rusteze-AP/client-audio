@@ -76,6 +76,7 @@ impl ClientAudio {
         if res.is_none() {
             return Err(format!("[REMOVE SENDER] - Sender with id {} not found", id));
         }
+        Self::init_flood_request(state);
         state
             .logger
             .log_debug(&format!("[REMOVE SENDER] - Sender with id {} removed", id));
@@ -95,6 +96,7 @@ impl ClientAudio {
                 id
             ));
         }
+        Self::init_flood_request(state);
         state
             .logger
             .log_debug(&format!("[ADD SENDER] - Sender with id {} added", id));
