@@ -111,9 +111,17 @@ impl ClientAudio {
                 state
                     .logger
                     .log_info(&format!("Received peer list {:?}", list));
+
+                if list.peers.is_empty() {
+                    state
+                        .logger
+                        .log_warn(&format!("peer list is empty {:?}", list));
+                    return;
+                }
                 state
                     .client_song_map
                     .insert(list.file_hash, list.peers[0].client_id);
+
                 Self::send_internal_segment_request(state, list.file_hash, 0);
             }
             // When a peer asks for a chunk, send the chunk response to the node
@@ -124,10 +132,14 @@ impl ClientAudio {
                 ));
                 if let Index::Indexes(vec) = &chunk.chunk_index {
                     for chunk_index in vec {
-                        Self::send_chunk_response(state, chunk.file_hash, *chunk_index, chunk.client_id);
+                        Self::send_chunk_response(
+                            state,
+                            chunk.file_hash,
+                            *chunk_index,
+                            chunk.client_id,
+                        );
                     }
-                }
-                else{
+                } else {
                     state.logger.log_error("Invalid chunk index");
                 }
             }
