@@ -1,8 +1,9 @@
 use crate::ClientAudio;
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::{unbounded, Receiver, RecvTimeoutError, Sender};
 use packet_forge::SongMetaData;
 use rocket::response::status::NotFound;
 use rocket::serde::json::Json;
+use std::time::Duration;
 use rocket::State;
 
 /// Get the song payload from the network
@@ -57,7 +58,7 @@ pub async fn get_song(
             client_mut.send_segment_request(id, segment_id as u32);
 
             //waiting for response from the other thread
-            match receiver.recv() {
+            match receiver.recv_timeout(Duration::from_secs(1)) {
                 Ok(res) => {
                     // check the result
                     if res {
@@ -81,13 +82,21 @@ pub async fn get_song(
                         Err(NotFound("Song not in the network".to_string()))
                     }
                 }
-                Err(e) => {
+                Err(RecvTimeoutError::Timeout) => {
                     state
                         .read()
                         .unwrap()
                         .logger
-                        .log_error(&format!("Error on inner channel: {}", e));
-                    Err(NotFound(format!("Error on inner channel: {}", e)))
+                        .log_error("Timeout while waiting for song");
+                    Err(NotFound("Timeout while waiting for song".to_string()))
+                }
+                Err(RecvTimeoutError::Disconnected) => {
+                    state
+                        .read()
+                        .unwrap()
+                        .logger
+                        .log_error("Channel disconnected");
+                    Err(NotFound("Channel disconnected".to_string()))
                 }
             }
         }
